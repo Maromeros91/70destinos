@@ -8,13 +8,14 @@
 <style>
 :root {
   --guinda: #9b2247;
-  --guinda-dark: #611232;
+  --guinda-oscuro: #611232;
+  --verde: #1e5b4f;
   --dorado: #a57f2c;
   --dorado-claro: #e6d194;
   --bg: #f9f8f6;
   --card-bg: #ffffff;
   --border: #e2ded6;
-  --text: #2b2b2b;
+  --text: #161a1d;
   --text-muted: #6b6b6b;
 }
 * { box-sizing: border-box; }
@@ -26,7 +27,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 header {
-  background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-dark) 100%);
+  background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-oscuro) 100%);
   color: #fff;
   padding: 24px 36px;
   border-bottom: 4px solid var(--dorado);
@@ -52,105 +53,64 @@ main { max-width: 1350px; margin: 0 auto; padding: 24px; }
 }
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
 .filter-group label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--guinda);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+  font-size: 11px; font-weight: 700; color: var(--guinda);
+  text-transform: uppercase; letter-spacing: 0.8px;
 }
 select {
-  padding: 10px 14px;
-  border: 1px solid #cfcabd;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #fff;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.2s;
+  padding: 10px 14px; border: 1px solid #cfcabd; border-radius: 8px;
+  font-size: 14px; background: #fff; color: var(--text); outline: none;
 }
 select:focus { border-color: var(--guinda); box-shadow: 0 0 0 2px rgba(155, 34, 71, 0.15); }
 
 .bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 20px;
-  margin-bottom: 20px;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 20px; margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .bar label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
 .q {
-  border: 1px solid var(--dorado);
-  background: #fff;
-  color: var(--guinda);
-  padding: 7px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  margin-right: 4px;
-  font-weight: 600;
-  transition: all 0.2s;
+  border: 1px solid var(--dorado); background: #fff; color: var(--guinda);
+  padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  margin-right: 4px; font-weight: 600;
 }
 .q:hover { background: var(--dorado); color: #fff; }
 
 .kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px; margin-bottom: 20px;
 }
 .kpi {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
-  border-top: 4px solid var(--guinda);
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; border-top: 4px solid var(--guinda);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .kpi.o { border-top-color: var(--dorado); }
+.kpi.verde { border-top-color: var(--verde); }
+.kpi.verde b { color: var(--verde); }
 .kpi small { color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .kpi b { display: block; font-size: 26px; color: var(--guinda); margin-top: 8px; font-weight: 700; }
 .kpi span { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: block; }
 
 .card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 24px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 .card h2 { margin: 0; color: var(--guinda); font-size: 20px; font-weight: 700; }
 .card h3 { margin: 6px 0 16px; color: var(--dorado); font-size: 13px; font-weight: 700; }
-.cv { position: relative; height: 440px; }
+.cv { position: relative; height: 480px; }
 .opts {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-top: 18px;
-  font-size: 13px;
-  color: var(--text-muted);
-  align-items: center;
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
+  display: flex; gap: 18px; flex-wrap: wrap; margin-top: 18px;
+  font-size: 13px; color: var(--text-muted); align-items: center;
+  border-top: 1px solid var(--border); padding-top: 16px;
 }
 .opts label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-weight: 500; }
 .opts input[type="checkbox"] { accent-color: var(--guinda); width: 16px; height: 16px; }
 .opts button {
-  margin-left: auto;
-  background: var(--guinda);
-  color: #fff;
-  border: none;
-  font-weight: 700;
-  padding: 9px 18px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
+  margin-left: auto; background: var(--guinda); color: #fff; border: none;
+  font-weight: 700; padding: 9px 18px; border-radius: 8px; cursor: pointer;
 }
-.opts button:hover { background: var(--guinda-dark); }
+.opts button:hover { background: var(--guinda-oscuro); }
 footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align: center; }
 </style>
 </head>
@@ -186,7 +146,6 @@ footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align
     </div>
   </div>
 
-  <!-- BARRA DE PERIODO CON MES Y AÑO -->
   <div class="bar">
     <label>Desde:</label>
     <select id="dMes"></select>
@@ -199,7 +158,6 @@ footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align
 
   <div class="kpis" id="kpis"></div>
 
-  <!-- Bloque de comparación ubicado debajo de los KPIs -->
   <div class="comp-card">
     <h4 style="margin:0 0 12px 0; color:var(--guinda); font-size:14px; text-transform:uppercase; letter-spacing:0.5px;">Comparativa multidestino (Hasta 3 adicionales)</h4>
     <div class="comp-grid">
@@ -224,7 +182,7 @@ footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align
     <div class="cv"><canvas id="c"></canvas></div>
     <div class="opts">
       <label><input type="checkbox" id="et" checked> Etiquetas de datos</label>
-      <span id="nota"></span>
+      <label><input type="checkbox" id="lt" checked> Línea de tendencia</label>
       <button id="png">Descargar Gráfica PNG</button>
     </div>
   </div>
@@ -237,6 +195,16 @@ const db = {"Acapulco": {"entidad": "Guerrero", "tipo": "Centros de Playa - Trad
 const M = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MC = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
+const PALETA = {
+  guinda: "#9b2247",
+  guindaOscuro: "#611232",
+  verde: "#1e5b4f",
+  dorado: "#a57f2c",
+  doradoClaro: "#e6d194",
+  negro: "#161a1d",
+  gris: "#98989a"
+};
+
 let allFechasSet = new Set();
 Object.values(db).forEach(d => d.fechas.forEach(f => allFechasSet.add(f)));
 const fechas = Array.from(allFechasSet).sort();
@@ -244,7 +212,6 @@ const fechas = Array.from(allFechasSet).sort();
 const lab = i => { const [a, m] = fechas[i].split("-"); return M[parseInt(m, 10) - 1] + " " + a; };
 const labC = i => { const [a, m] = fechas[i].split("-"); return MC[parseInt(m, 10) - 1] + " " + a; };
 
-// Años disponibles
 const anios = [...new Set(fechas.map(f => f.split("-")[0]))].sort();
 
 const CFG = {
@@ -277,7 +244,6 @@ const hAnio = document.getElementById("hAnio");
 tipos.forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; selTipo.appendChild(o); });
 estados.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; selEstado.appendChild(o); });
 
-// Llenar los selectores de comparación (2, 3, 4) con todos los destinos
 destinos.forEach(ds => {
   [selDestino2, selDestino3, selDestino4].forEach(sel => {
     let o = document.createElement("option"); o.value = ds; o.textContent = ds;
@@ -285,7 +251,6 @@ destinos.forEach(ds => {
   });
 });
 
-// Llenar selects de mes y año
 MC.forEach((m, i) => {
   const o1 = document.createElement("option"); o1.value = i; o1.textContent = m; dMes.appendChild(o1);
   const o2 = document.createElement("option"); o2.value = i; o2.textContent = m; hMes.appendChild(o2);
@@ -295,16 +260,13 @@ anios.forEach(a => {
   const o2 = document.createElement("option"); o2.value = a; o2.textContent = a; hAnio.appendChild(o2);
 });
 
-// Índices A y B globales sobre el arreglo `fechas`
 let A = 0, B = fechas.length - 1, ch;
 
-// Convierte (año, mesIdx) -> índice en fechas (o -1 si no existe)
 function getIdx(anio, mesIdx) {
   const key = anio + "-" + String(mesIdx + 1).padStart(2, "0");
   return fechas.indexOf(key);
 }
 
-// Sincroniza los selectores mes/año a partir de A y B
 function syncSelectores() {
   const [aA, mA] = fechas[A].split("-");
   dAnio.value = aA;
@@ -314,13 +276,11 @@ function syncSelectores() {
   hMes.value = parseInt(mB, 10) - 1;
 }
 
-// Aplica desde los selectores mes/año al par A,B
 function applyDesdeSelectores() {
   const aA = dAnio.value, mA = parseInt(dMes.value, 10);
   const aB = hAnio.value, mB = parseInt(hMes.value, 10);
   let iA = getIdx(aA, mA);
   let iB = getIdx(aB, mB);
-  // Si el mes no existe en fechas, buscar el siguiente/anterior disponible
   if (iA === -1) {
     const key = aA + "-" + String(mA + 1).padStart(2, "0");
     iA = fechas.findIndex(f => f >= key);
@@ -377,32 +337,77 @@ addQ("Todo el periodo", 0, fechas.length - 1);
 addQ("Últimos 12 meses", Math.max(0, fechas.length - 12), fechas.length - 1);
 addQ("Últimos 24 meses", Math.max(0, fechas.length - 24), fechas.length - 1);
 
+// ==== PLUGINS ====
 const fondo = { id: "fondo", beforeDraw(c) { const x = c.ctx; x.save(); x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
+
+// Plugin de etiquetas: SIEMPRE uno sí, uno no (step=2) cuando hay más de 24 puntos.
+// Cuando hay pocos puntos (<=24), se etiquetan todos.
+// El punto máximo del primer dataset siempre se etiqueta (en verde).
+// El tamaño de fuente es fijo (10px), sin reducción adaptativa.
 const etq = { id: "etq", afterDatasetsDraw(c) {
   if (!document.getElementById("et").checked) return;
   const x = c.ctx, k = selMetrica.value;
-  x.save(); x.textAlign = "center"; x.font = "bold 8px Segoe UI";
 
-  c.data.datasets.forEach((dsData, dsIdx) => {
-    const meta = c.getDatasetMeta(dsIdx);
-    if (meta.hidden) return;
-    const v = dsData.data, n = v.length;
+  const visibles = c.data.datasets
+    .map((d, i) => ({ d, i, meta: c.getDatasetMeta(i) }))
+    .filter(o => !o.d.esTendencia && !o.meta.hidden);
+  if (!visibles.length) return;
+
+  const nPuntos = visibles[0].d.data.length;
+  if (nPuntos < 1) return;
+
+  // Tamaño de fuente fijo; 10px se lee bien y no satura
+  const fontSize = 10;
+  x.save();
+  x.textAlign = "center";
+  x.font = "bold " + fontSize + "px Segoe UI";
+
+  // Regla estricta: si hay más de 24 puntos → uno sí, uno no.
+  // Si hay <=24 puntos → todos.
+  const step = (nPuntos > 24) ? 2 : 1;
+
+  const dy = fontSize + 3;
+  const unSoloDestino = visibles.length === 1;
+
+  visibles.forEach(({ d, meta }) => {
+    const v = d.data;
     meta.data.forEach((p, i) => {
       if (v[i] == null) return;
-      if (n > 24 && i % 3 !== 0) return;
-      let t = fmK(k, v[i]);
-      x.fillStyle = dsData.borderColor;
-      x.fillText(t, p.x, p.y - 6);
+      // El máximo del primer dataset siempre se etiqueta aunque el step lo salte
+      const esMax = (d._colorEspecial && d._colorEspecial[i]);
+      if (i % step !== 0 && !esMax) return;
+
+      const t = fmK(k, v[i]);
+      if (unSoloDestino) {
+        x.save();
+        x.lineWidth = 3;
+        x.strokeStyle = "rgba(255,255,255,0.85)";
+        x.strokeText(t, p.x, p.y - dy);
+        x.restore();
+      }
+      x.fillStyle = esMax ? PALETA.verde : d.borderColor;
+      x.fillText(t, p.x, p.y - dy);
     });
   });
   x.restore();
 }};
 
-const palette = ["#9b2247", "#a57f2c", "#1e5b4f", "#1d4ed8", "#334155"];
+// ==== REGRESIÓN LINEAL ====
+function regresionLineal(y) {
+  const pts = [];
+  y.forEach((v, i) => { if (v != null && isFinite(v)) pts.push([i, v]); });
+  const n = pts.length;
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  pts.forEach(([x, v]) => { sx += x; sy += v; sxy += x * v; sxx += x * x; });
+  const m = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+  const b = (sy - m * sx) / n;
+  return { m, b, n };
+}
 
-// ==== OBTENER SERIE PARA UN DESTINO O PARA EL AGREGADO ====
+const palette = [PALETA.guinda, PALETA.dorado, PALETA.verde, PALETA.negro, PALETA.gris];
+
 function getSeriesForSelection(dSel, tSel, eSel, k, subFechas) {
-  // Si es un destino específico, tomar directo del db
   if (dSel !== "Todos" && db[dSel]) {
     const item = db[dSel];
     const v = subFechas.map(f => {
@@ -413,15 +418,12 @@ function getSeriesForSelection(dSel, tSel, eSel, k, subFechas) {
     });
     return { v, name: dSel };
   }
-
-  // Agregado según filtros tipo/estado
   const targetDestinos = Object.keys(db).filter(ds => {
     const item = db[ds];
     if (tSel !== "Todos" && item.tipo !== tSel) return false;
     if (eSel !== "Todas" && item.entidad !== eSel) return false;
     return true;
   });
-
   const v = subFechas.map(f => {
     let sumVal = 0, validCount = 0;
     targetDestinos.forEach(ds => {
@@ -436,7 +438,6 @@ function getSeriesForSelection(dSel, tSel, eSel, k, subFechas) {
     if (k === "ocupacion") return validCount > 0 ? sumVal / validCount : null;
     return sumVal;
   });
-
   const name = eSel !== "Todas" ? eSel : (tSel !== "Todos" ? tSel : "Total Nacional");
   return { v, name };
 }
@@ -445,16 +446,32 @@ function draw() {
   const tSel = selTipo.value, eSel = selEstado.value, k = selMetrica.value;
   const subFechas = fechas.slice(A, B + 1);
 
-  // Recolectar todas las selecciones activas (principal + comparaciones)
   const selections = [selDestino1.value];
   [selDestino2, selDestino3, selDestino4].forEach(sel => {
     if (sel.value && sel.value !== "Ninguno") selections.push(sel.value);
   });
 
-  // Construir datasets
+  const seriePrincipal = getSeriesForSelection(selections[0], tSel, eSel, k, subFechas).v;
+
+  let idxMax = -1, valMax = -Infinity;
+  seriePrincipal.forEach((v, i) => {
+    if (v != null && v > valMax) { valMax = v; idxMax = i; }
+  });
+
   const datasets = selections.map((selVal, idx) => {
     const res = getSeriesForSelection(selVal, tSel, eSel, k, subFechas);
     const col = palette[idx % palette.length];
+
+    const colorEspecial = res.v.map(() => null);
+    let pointBg = col;
+    let pointBorder = col;
+
+    if (idx === 0 && idxMax >= 0) {
+      pointBg = res.v.map((_, i) => (i === idxMax ? PALETA.verde : col));
+      pointBorder = res.v.map((_, i) => (i === idxMax ? "#ffffff" : col));
+      colorEspecial[idxMax] = PALETA.verde;
+    }
+
     return {
       label: res.name,
       data: res.v,
@@ -463,12 +480,39 @@ function draw() {
       backgroundColor: col,
       borderWidth: 2,
       pointRadius: 2,
-      pointBackgroundColor: col,
-      pointBorderColor: col,
+      pointHoverRadius: 5,
+      pointBackgroundColor: pointBg,
+      pointBorderColor: pointBorder,
+      pointBorderWidth: 1,
       spanGaps: false,
-      fill: false
+      fill: false,
+      _colorEspecial: colorEspecial,
+      order: idx === 0 ? 1 : 2
     };
   });
+
+  const mostrarTendencia = document.getElementById("lt").checked && datasets.length === 1;
+  if (mostrarTendencia) {
+    const y = datasets[0].data;
+    const reg = regresionLineal(y);
+    if (reg) {
+      const trend = y.map((_, i) => reg.m * i + reg.b);
+      datasets.push({
+        label: "_trend_",
+        data: trend,
+        borderColor: PALETA.dorado,
+        backgroundColor: PALETA.dorado,
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0,
+        fill: false,
+        esTendencia: true,
+        order: 0
+      });
+    }
+  }
 
   if (ch) ch.destroy();
   ch = new Chart(document.getElementById("c"), {
@@ -479,12 +523,24 @@ function draw() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 24, right: 12 } },
+      interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: datasets.length > 1, position: "top" },
-        tooltip: { callbacks: { label: t => t.dataset.label + ": " + fm(k, t.parsed.y) } }
+        legend: {
+          display: datasets.filter(d => !d.esTendencia).length > 1,
+          position: "top",
+          labels: { usePointStyle: true, filter: item => item.text !== "_trend_" }
+        },
+        tooltip: {
+          // Se ocultan del tooltip los datasets marcados como tendencia.
+          filter: item => !(item.dataset && item.dataset.esTendencia),
+          callbacks: {
+            label: t => t.dataset.label + ": " + fm(k, t.parsed.y)
+          }
+        }
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#6b6b6b" } },
+        x: { grid: { display: false }, ticks: { color: "#6b6b6b", maxRotation: 60, autoSkip: true, maxTicksLimit: 24 } },
         y: { grid: { color: "#e2ded6" }, ticks: { color: "#6b6b6b", callback: x => CFG[k].k === "p" ? x + "%" : x.toLocaleString("es-MX") } }
       }
     },
@@ -492,23 +548,26 @@ function draw() {
   });
 
   document.getElementById("gt").textContent = CFG[k].t.toUpperCase();
-  document.getElementById("gs").textContent = "Destinos: " + datasets.map(d => d.label).join(", ") + " (" + labC(A) + " a " + labC(B) + ")";
+  const nombres = datasets.filter(d => !d.esTendencia).map(d => d.label);
+  document.getElementById("gs").textContent = "Destinos: " + nombres.join(", ") + " (" + labC(A) + " a " + labC(B) + ")";
 
-  // KPIs del destino principal
-  const s1 = datasets[0].data.filter(x => x != null);
+  const s1 = seriePrincipal.filter(x => x != null);
   const ult1 = s1.length ? s1[s1.length - 1] : 0;
   const prom1 = s1.length ? s1.reduce((a, b) => a + b, 0) / s1.length : 0;
   const max1 = s1.length ? Math.max(...s1) : 0;
-  const nom1 = datasets[0].label;
+  const nom1 = selections[0] === "Todos"
+    ? (eSel !== "Todas" ? eSel : (tSel !== "Todos" ? tSel : "Total Nacional"))
+    : selections[0];
 
   document.getElementById("kpis").innerHTML = `
     <div class="kpi"><small>Último dato (${nom1})</small><b>${fm(k, ult1)}</b><span>Mes más reciente</span></div>
     <div class="kpi o"><small>Promedio (${nom1})</small><b>${fm(k, prom1)}</b><span>${s1.length} meses</span></div>
-    <div class="kpi"><small>Máximo (${nom1})</small><b>${fm(k, max1)}</b><span>Récord del periodo</span></div>
+    <div class="kpi verde"><small>Máximo (${nom1})</small><b>${fm(k, max1)}</b><span>Récord del periodo</span></div>
   `;
 }
 
 document.getElementById("et").onchange = draw;
+document.getElementById("lt").onchange = draw;
 let W = window.innerWidth;
 window.addEventListener("resize", () => { if (window.innerWidth !== W) { W = window.innerWidth; draw(); } });
 
@@ -520,9 +579,9 @@ document.getElementById("png").onclick = () => {
   const x = c.getContext("2d");
   x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height);
   x.textBaseline = "top";
-  x.fillStyle = "#9b2247"; x.font = "bold " + Math.round(22 * k) + "px Segoe UI";
+  x.fillStyle = PALETA.guinda; x.font = "bold " + Math.round(22 * k) + "px Segoe UI";
   x.fillText(document.getElementById("gt").textContent, P, Math.round(18 * k));
-  x.fillStyle = "#a57f2c"; x.font = Math.round(15 * k) + "px Segoe UI";
+  x.fillStyle = PALETA.dorado; x.font = Math.round(15 * k) + "px Segoe UI";
   x.fillText(document.getElementById("gs").textContent, P, Math.round(52 * k));
   x.drawImage(src, 0, H);
   x.fillStyle = "#6b6b6b"; x.font = Math.round(12 * k) + "px Segoe UI";
@@ -531,7 +590,6 @@ document.getElementById("png").onclick = () => {
   a.href = c.toDataURL("image/png"); a.download = "comparativa_multidestino_datatur.png"; a.click();
 };
 
-// Inicialización
 actualizarCatalogos();
 syncSelectores();
 draw();
