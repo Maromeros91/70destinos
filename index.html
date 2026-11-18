@@ -795,7 +795,9 @@ anios.forEach(a => {
   const o2 = document.createElement("option"); o2.value = a; o2.textContent = a; hAnio.appendChild(o2);
 });
 
-let A = 0, B = fechas.length - 1, ch;
+// Periodo por defecto: este año (enero del año del último mes disponible a ese último mes)
+const inicioEsteAnio = Math.max(0, fechas.findIndex(f => f >= fechas[fechas.length - 1].slice(0, 4) + "-01"));
+let A = inicioEsteAnio, B = fechas.length - 1, ch;
 
 function getIdx(anio, mesIdx) {
   const key = anio + "-" + String(mesIdx + 1).padStart(2, "0");
@@ -868,6 +870,7 @@ function addQ(txt, a, b) {
   x.onclick = () => { A = Math.max(0, a); B = Math.min(fechas.length - 1, b); syncSelectores(); draw(); };
   rap.appendChild(x);
 }
+addQ("Este año", inicioEsteAnio, fechas.length - 1);
 addQ("Todo el periodo", 0, fechas.length - 1);
 addQ("Últimos 12 meses", Math.max(0, fechas.length - 12), fechas.length - 1);
 addQ("Últimos 24 meses", Math.max(0, fechas.length - 24), fechas.length - 1);
@@ -1207,15 +1210,15 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
   const pctInt = a.pax ? a.int / a.pax * 100 : null, pctIntP = p.pax ? p.int / p.pax * 100 : null;
   const pp = (x, y) => (x == null || y == null) ? "s/d" : ((x - y >= 0 ? "+" : "") + (x - y).toFixed(1) + " pp");
 
-  // Rutas por sentido: llegadas (RL, origen -> destino) y salidas (RS, destino -> destino final)
+  // Ciudades de origen (RL) y destinos (RS), agrupados por aeropuerto de la ciudad contraparte
   function rutas(fs, t) {
     const m = new Map();
     conAero.forEach(d => {
       const x = (AIRE.cat[d] || {})[t] || {};
       fs.forEach(f => (x[f] || []).forEach(([c, v, nv]) => {
         const [iata, ciudad, pais] = c.split("|");
-        const key = d + "|" + iata;
-        const o = m.get(key) || { d, iata, ciudad, pais, pax: 0, vue: 0 };
+        const key = iata;   // se agrupa por ciudad (aeropuerto) de origen o de destino
+        const o = m.get(key) || { iata, ciudad, pais, pax: 0, vue: 0 };
         o.pax += v; o.vue += nv || 0; m.set(key, o);
       }));
     });
@@ -1253,17 +1256,15 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
   }
   function tablaRutas(t, n) {
     const llegada = t === "RL";
-    const titulo = llegada ? "Top 10 rutas de llegada" : "Top 10 rutas de salida";
+    const titulo = llegada ? "Top 10 ciudades de origen" : "Top 10 destinos";
     const mA = rutas(meses, t), mP = rutas(prev, t);
     const lista = [...mA.values()].filter(o => o.pax > 0).sort((x, y) => y.pax - x.pax).slice(0, n);
     if (!lista.length) return `<table class="tab-top"><caption>${titulo}</caption><tr><td>Sin datos</td></tr></table>`;
     const tot = [...mA.values()].reduce((x, o) => x + o.pax, 0);
-    const varios = conAero.length > 1;
-    return `<table class="tab-top"><caption>${titulo}</caption><tr><th>${varios ? "Ruta" : (llegada ? "Origen" : "Destino")}</th><th>Pasajeros</th><th>Vuelos</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>` +
+    return `<table class="tab-top"><caption>${titulo}</caption><tr><th>${llegada ? "Ciudad de origen" : "Ciudad de destino"}</th><th>Pasajeros</th><th>Vuelos</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>` +
       lista.map(o => {
-        const q = mP.get(o.d + "|" + o.iata), pv = q ? q.pax : 0, vr = pv ? varP(o.pax, pv) : null;
-        const contra = o.ciudad + " (" + o.iata + (o.pais !== "México" ? ", " + o.pais : "") + ")";
-        const ruta = varios ? (llegada ? contra + " → " + o.d : o.d + " → " + contra) : contra;
+        const q = mP.get(o.iata), pv = q ? q.pax : 0, vr = pv ? varP(o.pax, pv) : null;
+        const ruta = o.ciudad + " (" + o.iata + (o.pais !== "México" ? ", " + o.pais : "") + ")";
         return `<tr><td>${ruta}</td><td>${fN(o.pax)}</td><td>${fN(o.vue)}</td><td>${fP(tot ? o.pax / tot * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nueva"}</td></tr>`;
       }).join("") + "</table>";
   }
