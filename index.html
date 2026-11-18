@@ -77,7 +77,7 @@ select:focus { border-color: var(--guinda); box-shadow: 0 0 0 2px rgba(155, 34, 
 .q:hover { background: var(--dorado); color: #fff; }
 
 .kpis {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px; margin-bottom: 20px;
 }
 .kpi {
@@ -91,6 +91,14 @@ select:focus { border-color: var(--guinda); box-shadow: 0 0 0 2px rgba(155, 34, 
 .kpi small { color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .kpi b { display: block; font-size: 26px; color: var(--guinda); margin-top: 8px; font-weight: 700; }
 .kpi span { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: block; }
+.kpi.gris { border-top-color: var(--text-muted); }
+.kpi.gris b { color: var(--text); }
+.kpi .cmp { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 12px; }
+.kpi .cmp span { display: inline; margin: 0; }
+.var { font-style: normal; font-weight: 700; font-size: 14px; margin-right: 6px; white-space: nowrap; }
+.var.up { color: var(--verde); }
+.var.down { color: var(--guinda); }
+.var.eq, .var.nd { color: var(--text-muted); font-size: 12px; }
 
 .card {
   background: var(--card-bg); border: 1px solid var(--border);
@@ -546,7 +554,7 @@ function construirDB(filas) {
   const cRes = col(x => x.includes("residente") && !x.includes("no residente"), 4);
   const cOcu = col(x => x.includes("ocupacion"), 6);
 
-  const tmp = {}; const sinCat = new Set();
+  const tmp = {}; const sinCat = new Set(); const dup = [];
   filas.slice(1).forEach(r => {
     const d = String(r[cDes] || "").trim(); if (!d) return;
     const anio = parseInt(r[cAnio], 10);
@@ -554,10 +562,18 @@ function construirDB(filas) {
     const mes = MESES_CSV[mt] || parseInt(mt, 10);
     if (!anio || !mes || mes < 1 || mes > 12) return;
     const f = anio + "-" + String(mes).padStart(2, "0");
-    (tmp[d] = tmp[d] || {})[f] = {
+    const reg = {
       total: numero(r[cTot]), nacionales: numero(r[cRes]),
       no_residentes: numero(r[cNoRes]), ocupacion: porcentaje(r[cOcu])
     };
+    tmp[d] = tmp[d] || {};
+    const prev = tmp[d][f];
+    if (prev) {
+      // Fila repetida: se conserva la ÚLTIMA que aparece en el CSV
+      const distinta = Object.keys(reg).some(k => (prev[k] == null ? null : Math.round(prev[k] * 100)) !== (reg[k] == null ? null : Math.round(reg[k] * 100)));
+      dup.push({ d, f, distinta, antes: prev.total, despues: reg.total });
+    }
+    tmp[d][f] = reg;
   });
 
   const out = {};
@@ -569,7 +585,7 @@ function construirDB(filas) {
     fs.forEach(f => Object.keys(series).forEach(k => series[k].push(tmp[d][f][k])));
     out[d] = { entidad: info.entidad, tipo: info.tipo, fechas: fs, series };
   });
-  return { db: out, sinCat: [...sinCat] };
+  return { db: out, sinCat: [...sinCat], dup };
 }
 
 const MESES_LARGOS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -578,13 +594,20 @@ let HASTA = "";
 function mostrarAviso(html) { const a = document.getElementById("aviso"); a.innerHTML = html; a.style.display = "block"; }
 
 function arrancarCon(buf) {
-  const { db, sinCat } = construirDB(parseCSV(decodificar(buf)));
+  const { db, sinCat, dup } = construirDB(parseCSV(decodificar(buf)));
   if (!Object.keys(db).length) { mostrarAviso("<b>No se encontraron datos válidos en el CSV.</b> Revise que tenga las columnas Centro, Año, Mes, Llegada de turistas total, Turistas Residentes, Turistas No Residentes y Ocupación hotelera."); return; }
   const ult = Object.values(db).map(d => d.fechas[d.fechas.length - 1]).sort().pop();
   const [ua, um] = ult.split("-");
   HASTA = MESES_LARGOS[parseInt(um, 10) - 1] + " " + ua;
   document.getElementById("hasta").textContent = "(Datos hasta " + HASTA + ")";
-  if (sinCat.length) mostrarAviso("<b>Aviso:</b> estos destinos del CSV no están en el catálogo de clasificación y aparecen como «Sin clasificar»: " + sinCat.join(", ") + ".");
+  const avisos = [];
+  if (sinCat.length) avisos.push("<b>Destinos sin clasificar:</b> estos destinos del CSV no están en el catálogo y aparecen como «Sin clasificar»: " + sinCat.join(", ") + ".");
+  const dupDist = dup.filter(x => x.distinta);
+  if (dupDist.length) avisos.push("<b>Filas repetidas con valores distintos</b> (se usa la última fila del CSV): " +
+    dupDist.map(x => x.d + " " + x.f + " (" + (x.antes ?? "s/d").toLocaleString("es-MX") + " → " + (x.despues ?? "s/d").toLocaleString("es-MX") + " turistas)").join("; ") + ".");
+  const dupIg = dup.length - dupDist.length;
+  if (dupIg) avisos.push("Se ignoraron " + dupIg + " filas repetidas con valores idénticos.");
+  if (avisos.length) mostrarAviso(avisos.join("<br>"));
   iniciar(db);
 }
 
@@ -966,17 +989,70 @@ function draw() {
   document.getElementById("gs").textContent = "Destinos: " + nombres.join(", ") + " (" + labC(A) + " a " + labC(B) + ")";
 
   const s1 = seriePrincipal.filter(x => x != null);
-  const ult1 = s1.length ? s1[s1.length - 1] : 0;
   const prom1 = s1.length ? s1.reduce((a, b) => a + b, 0) / s1.length : 0;
   const max1 = s1.length ? Math.max(...s1) : 0;
   const nom1 = selections[0] === "Todos"
     ? (eSel !== "Todas" ? eSel : (tSel !== "Todos" ? tSel : "Total Nacional"))
     : selections[0];
 
+  // ---- Comparativa con el mismo periodo del año anterior ----
+  const esPct = CFG[k].k === "p";
+  const menos12 = f => { const [y, m] = f.split("-"); return (parseInt(y, 10) - 1) + "-" + m; };
+  const etqF = f => { const [y, m] = f.split("-"); return M[parseInt(m, 10) - 1] + " " + y; };
+  const subPrev = subFechas.map(menos12);
+  const seriePrev = getSeriesForSelection(selections[0], tSel, eSel, k, subPrev).v;
+
+  // Se comparan solo los meses que tienen dato en ambos años (comparación homogénea)
+  let accAct = 0, accPrev = 0, nPar = 0, accTodo = 0, nTodo = 0;
+  seriePrincipal.forEach((v, i) => {
+    if (v == null) return;
+    accTodo += v; nTodo++;
+    const p = seriePrev[i];
+    if (p != null) { accAct += v; accPrev += p; nPar++; }
+  });
+  const agregar = (suma, n) => n ? (esPct ? suma / n : suma) : null;
+  const valPeriodo = agregar(accTodo, nTodo);
+  const valAct = agregar(accAct, nPar);
+  const valPrev = agregar(accPrev, nPar);
+
+  function variacion(act, prev) {
+    if (act == null || prev == null) return '<em class="var nd">Sin dato del año anterior</em>';
+    if (esPct) {
+      const d = act - prev;
+      if (Math.abs(d) < 0.05) return '<em class="var eq">= 0.0 pp</em>';
+      return `<em class="var ${d > 0 ? "up" : "down"}">${d > 0 ? "▲ +" : "▼ "}${d.toFixed(1)} pp</em>`;
+    }
+    if (!prev) return '<em class="var nd">Sin base de comparación</em>';
+    const d = (act / prev - 1) * 100;
+    if (Math.abs(d) < 0.05) return '<em class="var eq">= 0.0%</em>';
+    return `<em class="var ${d > 0 ? "up" : "down"}">${d > 0 ? "▲ +" : "▼ "}${d.toFixed(1)}%</em>`;
+  }
+
+  // Último mes con dato
+  let iUlt = -1; for (let i = seriePrincipal.length - 1; i >= 0; i--) if (seriePrincipal[i] != null) { iUlt = i; break; }
+  const ult1 = iUlt >= 0 ? seriePrincipal[iUlt] : null;
+  const ultPrev = iUlt >= 0 ? seriePrev[iUlt] : null;
+  const fUlt = iUlt >= 0 ? subFechas[iUlt] : null;
+
+  const rango = etqF(subFechas[0]) + " – " + etqF(subFechas[subFechas.length - 1]);
+  const rangoPrev = etqF(subPrev[0]) + " – " + etqF(subPrev[subPrev.length - 1]);
+  const parcial = (nPar < nTodo && nPar > 0)
+    ? `<br>Comparación homogénea sobre los ${nPar} de ${nTodo} meses con dato en ambos años: ${fm(k, valAct)} vs. ${fm(k, valPrev)}`
+    : "";
+
   document.getElementById("kpis").innerHTML = `
-    <div class="kpi"><small>Último dato (${nom1})</small><b>${fm(k, ult1)}</b><span>Mes más reciente</span></div>
-    <div class="kpi o"><small>Promedio (${nom1})</small><b>${fm(k, prom1)}</b><span>${s1.length} meses</span></div>
-    <div class="kpi verde"><small>Máximo (${nom1})</small><b>${fm(k, max1)}</b><span>Récord del periodo</span></div>
+    <div class="kpi"><small>${esPct ? "Ocupación promedio del periodo" : "Total acumulado del periodo"} (${nom1})</small>
+      <b>${fm(k, valPeriodo)}</b>
+      <span>${rango} (${nTodo} meses)</span>
+      <div class="cmp">${variacion(valAct, valPrev)} <span>vs. ${rangoPrev}: ${fm(k, valPrev)}${parcial}</span></div></div>
+    <div class="kpi o"><small>Último dato (${nom1})</small>
+      <b>${fm(k, ult1)}</b>
+      <span>${fUlt ? MC[parseInt(fUlt.split("-")[1], 10) - 1] + " " + fUlt.split("-")[0] : "s/d"}</span>
+      <div class="cmp">${variacion(ult1, ultPrev)} <span>vs. ${fUlt ? etqF(menos12(fUlt)) : "s/d"}: ${fm(k, ultPrev)}</span></div></div>
+    ${esPct
+      ? `<div class="kpi gris"><small>Mínimo mensual (${nom1})</small><b>${fm(k, s1.length ? Math.min(...s1) : null)}</b><span>Nivel más bajo del periodo</span></div>`
+      : `<div class="kpi gris"><small>Promedio mensual (${nom1})</small><b>${fm(k, prom1)}</b><span>${s1.length} meses</span></div>`}
+    <div class="kpi verde"><small>Máximo mensual (${nom1})</small><b>${fm(k, max1)}</b><span>Récord del periodo</span></div>
   `;
 }
 
