@@ -124,7 +124,10 @@ select:focus { border-color: var(--guinda); box-shadow: 0 0 0 2px rgba(155, 34, 
 .aire-res small { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
 .aire-res b { display: block; font-size: 20px; color: var(--guinda); margin-top: 4px; }
 .aire-res span { font-size: 12px; color: var(--text-muted); }
-.aire-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; }
+.aire-res span b.up { color: var(--verde); }
+.aire-res span b.down { color: var(--guinda); }
+.aire-res span b { color: var(--text-muted); }
+.aire-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; align-items: start; }
 .tab-top { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tab-top caption { text-align: left; font-weight: 700; color: var(--guinda); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 8px; }
 .tab-top th { text-align: right; font-size: 11px; color: var(--text-muted); font-weight: 700; border-bottom: 2px solid var(--dorado); padding: 6px 6px; }
@@ -693,7 +696,7 @@ function cargarAire(txt) {
       o.vuelos += +r[iV] || 0; o.asientos += +r[iA] || 0; o.pax_lf += +r[iL] || 0;
     } else {
       const x = ((cat[d] = cat[d] || {})[t] = cat[d][t] || {});
-      (x[f] = x[f] || []).push([r[iC], p]);
+      (x[f] = x[f] || []).push([r[iC], p, +r[iV] || 0]);
     }
   });
   return { serie, cat, hasta };
@@ -1192,6 +1195,7 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
   const R = fs => ({ pax: sumSerie(fs, "aire_total"), nac: sumSerie(fs, "aire_nac"), int: sumSerie(fs, "aire_int"),
     vue: sumSerie(fs, "vuelos"), asi: sumSerie(fs, "asientos"), lf: sumSerie(fs, "pax_lf") });
   const a = R(meses), p = R(prev);
+  const sumVue = (fs, t) => { let n = 0, hay = false; conAero.forEach(d => { const x = (AIRE.cat[d] || {})[t] || {}; fs.forEach(f => (x[f] || []).forEach(e => { n += e[2] || 0; hay = true; })); }); return hay ? n : null; };
   const sumCat = (fs, t) => { const m = new Map(); conAero.forEach(d => { const x = (AIRE.cat[d] || {})[t] || {}; fs.forEach(f => (x[f] || []).forEach(([c, v]) => m.set(c, (m.get(c) || 0) + v))); }); return m; };
 
   const fN = v => v == null ? "s/d" : Math.round(v).toLocaleString("es-MX");
@@ -1203,28 +1207,24 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
   const pctInt = a.pax ? a.int / a.pax * 100 : null, pctIntP = p.pax ? p.int / p.pax * 100 : null;
   const pp = (x, y) => (x == null || y == null) ? "s/d" : ((x - y >= 0 ? "+" : "") + (x - y).toFixed(1) + " pp");
 
-  // Rutas (ambos sentidos). Al agregar varios destinos, una ruta entre dos destinos del filtro se cuenta una sola vez.
-  const enFiltro = new Set(conAero);
-  function rutas(fs) {
+  // Rutas por sentido: llegadas (RL, origen -> destino) y salidas (RS, destino -> destino final)
+  function rutas(fs, t) {
     const m = new Map();
-    conAero.forEach(d => ["RL", "RS"].forEach(t => {
+    conAero.forEach(d => {
       const x = (AIRE.cat[d] || {})[t] || {};
-      fs.forEach(f => (x[f] || []).forEach(([c, v]) => {
+      fs.forEach(f => (x[f] || []).forEach(([c, v, nv]) => {
         const [iata, ciudad, pais] = c.split("|");
-        const d2 = IATA_DEST[iata];
-        if (d2 && enFiltro.has(d2) && d2 < d) return;   // ya contada desde el otro destino
         const key = d + "|" + iata;
-        const o = m.get(key) || { d, iata, ciudad, pais, l: 0, s: 0, d2: d2 && enFiltro.has(d2) ? d2 : null };
-        if (t === "RL") o.l += v; else o.s += v;
-        m.set(key, o);
+        const o = m.get(key) || { d, iata, ciudad, pais, pax: 0, vue: 0 };
+        o.pax += v; o.vue += nv || 0; m.set(key, o);
       }));
-    }));
+    });
     return m;
   }
-  const rA = rutas(meses), rP = rutas(prev);
-  // Pasajeros salidos: todas las salidas desde los aeropuertos del destino (o del conjunto filtrado)
+  // Pasajeros y vuelos de salida: todo lo que despega de los aeropuertos del destino (o del conjunto filtrado)
   const totSal = fs => { const v = [...sumCat(fs, "RS").values()]; return v.length ? v.reduce((x, y) => x + y, 0) : null; };
   const sal = totSal(meses), salP = totSal(prev);
+  const vSal = sumVue(meses, "RS"), vSalP = sumVue(prev, "RS");
 
   const serv = sumCat(meses, "S"); const fle = serv.get("Fletamento") || 0;
   const aerolA = [...sumCat(meses, "A").values()].filter(v => v > 0).length;
@@ -1232,9 +1232,10 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
   const caja = (t, v, s2) => `<div><small>${t}</small><b>${v}</b><span>${s2}</span></div>`;
   const cmpTxt = (x, y) => `<b style="display:inline;font-size:13px;" class="${cls(varP(x, y))}">${varTxt(varP(x, y))}</b> vs. ${fN(y)}`;
   let html = '<div class="aire-res">' +
-    caja("Pasajeros aéreos llegados", fN(a.pax), cmpTxt(a.pax, p.pax)) +
-    caja("Pasajeros aéreos salidos", fN(sal), cmpTxt(sal, salP)) +
-    caja("Vuelos llegados", fN(a.vue), cmpTxt(a.vue, p.vue)) +
+    caja("Pasajeros (llegadas)", fN(a.pax), cmpTxt(a.pax, p.pax)) +
+    caja("Pasajeros (salidas)", fN(sal), cmpTxt(sal, salP)) +
+    caja("Vuelos (llegadas)", fN(a.vue), cmpTxt(a.vue, p.vue)) +
+    caja("Vuelos (salidas)", fN(vSal), cmpTxt(vSal, vSalP)) +
     caja("Factor de ocupación", fP(lfA), `${pp(lfA, lfP)} vs. ${fP(lfP)}`) +
     caja("Participación internacional", fP(pctInt), `${pp(pctInt, pctIntP)} vs. ${fP(pctIntP)} · fletamento ${a.pax ? fP(fle / a.pax * 100) : "s/d"}`) +
     '</div>';
@@ -1250,20 +1251,24 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
         return `<tr><td>${c}</td><td>${fN(v)}</td><td>${fP(tot ? v / tot * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nuevo"}</td></tr>`; }).join("") +
       "</table>";
   }
-  function tablaRutas(n) {
-    const lista = [...rA.values()].map(o => ({ ...o, t: o.l + o.s })).filter(o => o.t > 0).sort((x, y) => y.t - x.t).slice(0, n);
-    if (!lista.length) return '<table class="tab-top"><caption>Top 10 rutas</caption><tr><td>Sin datos</td></tr></table>';
-    const totR = [...rA.values()].reduce((x, o) => x + o.l + o.s, 0);
+  function tablaRutas(t, n) {
+    const llegada = t === "RL";
+    const titulo = llegada ? "Top 10 rutas de llegada" : "Top 10 rutas de salida";
+    const mA = rutas(meses, t), mP = rutas(prev, t);
+    const lista = [...mA.values()].filter(o => o.pax > 0).sort((x, y) => y.pax - x.pax).slice(0, n);
+    if (!lista.length) return `<table class="tab-top"><caption>${titulo}</caption><tr><td>Sin datos</td></tr></table>`;
+    const tot = [...mA.values()].reduce((x, o) => x + o.pax, 0);
     const varios = conAero.length > 1;
-    return '<table class="tab-top"><caption>Top 10 rutas (llegadas + salidas)</caption><tr><th>Ruta</th><th>Llegadas</th><th>Salidas</th><th>Total</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>' +
+    return `<table class="tab-top"><caption>${titulo}</caption><tr><th>${varios ? "Ruta" : (llegada ? "Origen" : "Destino")}</th><th>Pasajeros</th><th>Vuelos</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>` +
       lista.map(o => {
-        const q = rP.get(o.d + "|" + o.iata), pv = q ? q.l + q.s : 0, vr = pv ? varP(o.t, pv) : null;
-        const contra = (o.d2 || o.ciudad) + " (" + o.iata + (o.pais !== "México" ? ", " + o.pais : "") + ")";
-        return `<tr><td>${varios ? o.d + " ↔ " : "↔ "}${contra}</td><td>${fN(o.l)}</td><td>${fN(o.s)}</td><td>${fN(o.t)}</td><td>${fP(totR ? o.t / totR * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nueva"}</td></tr>`;
+        const q = mP.get(o.d + "|" + o.iata), pv = q ? q.pax : 0, vr = pv ? varP(o.pax, pv) : null;
+        const contra = o.ciudad + " (" + o.iata + (o.pais !== "México" ? ", " + o.pais : "") + ")";
+        const ruta = varios ? (llegada ? contra + " → " + o.d : o.d + " → " + contra) : contra;
+        return `<tr><td>${ruta}</td><td>${fN(o.pax)}</td><td>${fN(o.vue)}</td><td>${fP(tot ? o.pax / tot * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nueva"}</td></tr>`;
       }).join("") + "</table>";
   }
   html += '<div class="aire-grid">' + tabla("Top 10 países de origen (vuelos internacionales)", "P", 10, "México") + tabla("Top 10 aerolíneas", "A", 10) + "</div>" +
-    '<div style="margin-top:20px;">' + tablaRutas(10) + "</div>";
+    '<div class="aire-grid" style="margin-top:20px;">' + tablaRutas("RL", 10) + tablaRutas("RS", 10) + "</div>";
 
   const aeros = conAero.flatMap(d => AEROP[d] || []);
   html += '<p class="aire-nota">Aeropuertos considerados: ' + (aeros.length ? aeros.join(", ") : "ver " + ARCHIVO_AEROP) +
