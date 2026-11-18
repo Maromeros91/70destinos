@@ -119,6 +119,21 @@ select:focus { border-color: var(--guinda); box-shadow: 0 0 0 2px rgba(155, 34, 
   font-weight: 700; padding: 9px 18px; border-radius: 8px; cursor: pointer;
 }
 .opts button:hover { background: var(--guinda-oscuro); }
+.aire-res { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.aire-res div { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.aire-res small { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.aire-res b { display: block; font-size: 20px; color: var(--guinda); margin-top: 4px; }
+.aire-res span { font-size: 12px; color: var(--text-muted); }
+.aire-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 20px; }
+.tab-top { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tab-top caption { text-align: left; font-weight: 700; color: var(--guinda); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 8px; }
+.tab-top th { text-align: right; font-size: 11px; color: var(--text-muted); font-weight: 700; border-bottom: 2px solid var(--dorado); padding: 6px 6px; }
+.tab-top th:first-child, .tab-top td:first-child { text-align: left; }
+.tab-top td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.tab-top td:first-child { white-space: normal; }
+.tab-top td.up { color: var(--verde); font-weight: 700; }
+.tab-top td.down { color: var(--guinda); font-weight: 700; }
+.aire-nota { font-size: 12px; color: var(--text-muted); margin-top: 14px; }
 footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align: center; }
 </style>
 </head>
@@ -150,6 +165,14 @@ footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align
           <option value="nacionales">Turistas Residentes (Nacionales)</option>
           <option value="no_residentes">Turistas No Residentes (Extranjeros)</option>
           <option value="ocupacion">Ocupación hotelera (%)</option>
+          <optgroup label="Conectividad aérea (AFAC) — llegadas" id="grpAire">
+            <option value="aire_total">Pasajeros aéreos llegados (total)</option>
+            <option value="aire_nac">Pasajeros aéreos llegados — vuelos nacionales</option>
+            <option value="aire_int">Pasajeros aéreos llegados — vuelos internacionales</option>
+            <option value="vuelos">Vuelos llegados</option>
+            <option value="asientos">Asientos ofrecidos</option>
+            <option value="factor">Factor de ocupación de vuelos (%)</option>
+          </optgroup>
         </select>
       </div>
     </div>
@@ -195,7 +218,12 @@ footer { font-size: 12px; color: var(--text-muted); margin-top: 20px; text-align
       <button id="png">Descargar Gráfica PNG</button>
     </div>
   </div>
-  <footer>Sistema Nacional de Información Estadística del Sector Turismo &bull; DataTur / SECTUR.</footer>
+  <div class="card" id="aireCard" style="margin-top:20px;">
+    <h2>CONECTIVIDAD AÉREA DEL PERIODO</h2>
+    <h3 id="aireSub"></h3>
+    <div id="aireBody"></div>
+  </div>
+  <footer>Sistema Nacional de Información Estadística del Sector Turismo &bull; DataTur / SECTUR. Conectividad aérea: AFAC, tráfico de pasajeros por origen y destino (llegadas a los aeropuertos asignados a cada destino).</footer>
 </main>
 
 <script>
@@ -607,6 +635,25 @@ function arrancarCon(buf) {
     dupDist.map(x => x.d + " " + x.f + " (" + (x.antes ?? "s/d").toLocaleString("es-MX") + " → " + (x.despues ?? "s/d").toLocaleString("es-MX") + " turistas)").join("; ") + ".");
   const dupIg = dup.length - dupDist.length;
   if (dupIg) avisos.push("Se ignoraron " + dupIg + " filas repetidas con valores idénticos.");
+  if (AIRE) {
+    const KA = ["aire_total", "aire_nac", "aire_int", "vuelos", "asientos", "pax_lf"];
+    const noEncontrados = Object.keys(AIRE.serie).filter(d => !db[d]);
+    if (noEncontrados.length) avisos.push("<b>Conectividad aérea:</b> estos destinos de " + ARCHIVO_AIRE + " no coinciden con ningún destino del CSV turístico: " + noEncontrados.join(", ") + ".");
+    Object.keys(db).forEach(d => {
+      const item = db[d], aire = AIRE.serie[d] || {};
+      const todas = [...new Set([...item.fechas, ...Object.keys(aire)])].sort();
+      const viejo = {}; item.fechas.forEach((f, i) => viejo[f] = i);
+      const ns = {};
+      Object.keys(item.series).forEach(k => ns[k] = todas.map(f => viejo[f] != null ? item.series[k][viejo[f]] : null));
+      KA.forEach(k => ns[k] = todas.map(f => aire[f] ? aire[f][k] : null));
+      ns.factor = todas.map(f => (aire[f] && aire[f].asientos > 0) ? aire[f].pax_lf / aire[f].asientos * 100 : null);
+      item.fechas = todas; item.series = ns; item.fechasTur = Object.keys(viejo);
+    });
+    const [aa, am] = AIRE.hasta.split("-");
+    document.getElementById("hasta").textContent = "(Turismo hasta " + HASTA + " · AFAC hasta " + MESES_LARGOS[parseInt(am, 10) - 1] + " " + aa + ")";
+  } else {
+    const g = document.getElementById("grpAire"); if (g) g.remove();
+  }
   if (avisos.length) mostrarAviso(avisos.join("<br>"));
   iniciar(db);
 }
@@ -621,10 +668,48 @@ function pedirArchivoManual(motivo) {
   };
 }
 
-fetch(ARCHIVO_CSV + "?v=" + Date.now(), { cache: "no-store" })
-  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
-  .then(arrancarCon)
-  .catch(err => pedirArchivoManual(err.message));
+// Archivos opcionales de conectividad aérea (si no existen, el visor funciona sin ellos)
+const ARCHIVO_AIRE = "aereo_destinos.csv";
+const ARCHIVO_AEROP = "aeropuertos_destinos.csv";
+let AIRE = null;        // { serie: {destino: {fecha: {...}}}, cat: {destino: {tipo: {fecha: [[categoria, pax], ...]}}}, hasta }
+let AEROP = {};         // { destino: ["MEX (AICM)", ...] }
+
+const bajar = (nombre, tipo) => fetch(nombre + "?v=" + Date.now(), { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return tipo === "buf" ? r.arrayBuffer() : r.arrayBuffer().then(decodificar); });
+
+function cargarAire(txt) {
+  const filas = parseCSV(txt); const h = filas[0].map(norm);
+  const c = n => h.indexOf(n);
+  const iD = c("destino"), iF = c("fecha"), iT = c("tipo"), iC = c("categoria"), iP = c("pasajeros"), iV = c("vuelos"), iA = c("asientos"), iL = c("pax_con_asientos");
+  const serie = {}, cat = {}; let hasta = "";
+  filas.slice(1).forEach(r => {
+    const d = r[iD], f = r[iF], t = r[iT], p = +r[iP] || 0;
+    if (!d || !f) return;
+    if (f > hasta) hasta = f;
+    if (t === "K") {
+      const o = ((serie[d] = serie[d] || {})[f] = serie[d][f] || { aire_total: 0, aire_nac: 0, aire_int: 0, vuelos: 0, asientos: 0, pax_lf: 0 });
+      o.aire_total += p; if (r[iC] === "Internacional") o.aire_int += p; else o.aire_nac += p;
+      o.vuelos += +r[iV] || 0; o.asientos += +r[iA] || 0; o.pax_lf += +r[iL] || 0;
+    } else {
+      const x = ((cat[d] = cat[d] || {})[t] = cat[d][t] || {});
+      (x[f] = x[f] || []).push([r[iC], p]);
+    }
+  });
+  return { serie, cat, hasta };
+}
+
+function cargarAeropuertos(txt) {
+  const filas = parseCSV(txt); const out = {};
+  filas.slice(1).forEach(r => { const d = (r[0] || "").trim(), c = (r[1] || "").trim(); if (d && c) (out[d] = out[d] || []).push(c + (r[2] ? " (" + r[2].trim() + ")" : "")); });
+  return out;
+}
+
+Promise.allSettled([bajar(ARCHIVO_CSV, "buf"), bajar(ARCHIVO_AIRE, "txt"), bajar(ARCHIVO_AEROP, "txt")]).then(([tur, aire, aerop]) => {
+  if (aire.status === "fulfilled") { try { AIRE = cargarAire(aire.value); } catch (e) { console.error(e); } }
+  if (aerop.status === "fulfilled") { try { AEROP = cargarAeropuertos(aerop.value); } catch (e) { console.error(e); } }
+  if (tur.status === "fulfilled") arrancarCon(tur.value);
+  else pedirArchivoManual(tur.reason.message);
+});
 
 function iniciar(db) {
 
@@ -644,7 +729,10 @@ const PALETA = {
 
 let allFechasSet = new Set();
 Object.values(db).forEach(d => d.fechas.forEach(f => allFechasSet.add(f)));
-const fechas = Array.from(allFechasSet).sort();
+const minTur = Object.values(db).map(d => (d.fechasTur || d.fechas)[0]).filter(Boolean).sort()[0];
+const fechas = Array.from(allFechasSet).sort().filter(f => !minTur || f >= minTur);
+// índice rápido fecha -> posición por destino
+Object.values(db).forEach(d => { d.pos = {}; d.fechas.forEach((f, i) => d.pos[f] = i); });
 
 const lab = i => { const [a, m] = fechas[i].split("-"); return M[parseInt(m, 10) - 1] + " " + a; };
 const labC = i => { const [a, m] = fechas[i].split("-"); return MC[parseInt(m, 10) - 1] + " " + a; };
@@ -655,7 +743,13 @@ const CFG = {
   total: { t: "Llegada de turistas total", k: "n" },
   nacionales: { t: "Llegada de turistas nacionales", k: "n" },
   no_residentes: { t: "Llegada de turistas no residentes", k: "n" },
-  ocupacion: { t: "Ocupación hotelera promedio", k: "p" }
+  ocupacion: { t: "Ocupación hotelera promedio", k: "p" },
+  aire_total: { t: "Pasajeros aéreos llegados (total)", k: "n" },
+  aire_nac: { t: "Pasajeros aéreos llegados en vuelos nacionales", k: "n" },
+  aire_int: { t: "Pasajeros aéreos llegados en vuelos internacionales", k: "n" },
+  vuelos: { t: "Vuelos llegados", k: "n" },
+  asientos: { t: "Asientos ofrecidos en vuelos llegados", k: "n" },
+  factor: { t: "Factor de ocupación de vuelos llegados", k: "p" }
 };
 
 const fm = (k, v) => v == null ? "s/d" : (CFG[k].k === "p" ? v.toFixed(1) + "%" : Math.round(v).toLocaleString("es-MX"));
@@ -844,39 +938,36 @@ function regresionLineal(y) {
 
 const palette = [PALETA.guinda, PALETA.dorado, PALETA.verde, PALETA.negro, PALETA.gris];
 
-function getSeriesForSelection(dSel, tSel, eSel, k, subFechas) {
-  if (dSel !== "Todos" && db[dSel]) {
-    const item = db[dSel];
-    const v = subFechas.map(f => {
-      const fi = item.fechas.indexOf(f);
-      if (fi === -1) return null;
-      const val = item.series[k][fi];
-      return (val == null) ? null : val;
-    });
-    return { v, name: dSel };
-  }
-  const targetDestinos = Object.keys(db).filter(ds => {
+function destinosDeSeleccion(dSel, tSel, eSel) {
+  if (dSel !== "Todos" && db[dSel]) return [dSel];
+  return Object.keys(db).filter(ds => {
     const item = db[ds];
     if (tSel !== "Todos" && item.tipo !== tSel) return false;
     if (eSel !== "Todas" && item.entidad !== eSel) return false;
     return true;
   });
+}
+const nombreSeleccion = (dSel, tSel, eSel) => (dSel !== "Todos" && db[dSel]) ? dSel
+  : (eSel !== "Todas" ? eSel : (tSel !== "Todos" ? tSel : "Total Nacional"));
+
+function getSeriesForSelection(dSel, tSel, eSel, k, subFechas) {
+  const targetDestinos = destinosDeSeleccion(dSel, tSel, eSel);
+  const valor = (item, f, kk) => { const i = item.pos[f]; return (i == null || !item.series[kk]) ? null : item.series[kk][i]; };
   const v = subFechas.map(f => {
+    if (!targetDestinos.length) return null;
+    if (k === "factor") {
+      // Factor de ocupación ponderado: pasajeros / asientos del conjunto
+      let p = 0, a = 0;
+      targetDestinos.forEach(ds => { const pp = valor(db[ds], f, "pax_lf"), aa = valor(db[ds], f, "asientos"); if (pp != null && aa) { p += pp; a += aa; } });
+      return a > 0 ? p / a * 100 : null;
+    }
     let sumVal = 0, validCount = 0;
-    targetDestinos.forEach(ds => {
-      const item = db[ds];
-      const fi = item.fechas.indexOf(f);
-      if (fi !== -1) {
-        const val = item.series[k][fi];
-        if (val != null) { sumVal += val; validCount++; }
-      }
-    });
-    if (targetDestinos.length === 0) return null;
-    if (k === "ocupacion") return validCount > 0 ? sumVal / validCount : null;
+    targetDestinos.forEach(ds => { const val = valor(db[ds], f, k); if (val != null) { sumVal += val; validCount++; } });
+    if (!validCount) return null;
+    if (k === "ocupacion") return sumVal / validCount;
     return sumVal;
   });
-  const name = eSel !== "Todas" ? eSel : (tSel !== "Todos" ? tSel : "Total Nacional");
-  return { v, name };
+  return { v, name: nombreSeleccion(dSel, tSel, eSel) };
 }
 
 function draw() {
@@ -1011,9 +1102,21 @@ function draw() {
     if (p != null) { accAct += v; accPrev += p; nPar++; }
   });
   const agregar = (suma, n) => n ? (esPct ? suma / n : suma) : null;
-  const valPeriodo = agregar(accTodo, nTodo);
-  const valAct = agregar(accAct, nPar);
-  const valPrev = agregar(accPrev, nPar);
+  let valPeriodo = agregar(accTodo, nTodo);
+  let valAct = agregar(accAct, nPar);
+  let valPrev = agregar(accPrev, nPar);
+  if (k === "factor") {
+    // Factor de ocupación del periodo ponderado: suma de pasajeros / suma de asientos
+    const L = getSeriesForSelection(selections[0], tSel, eSel, "pax_lf", subFechas).v, S = getSeriesForSelection(selections[0], tSel, eSel, "asientos", subFechas).v;
+    const Lp = getSeriesForSelection(selections[0], tSel, eSel, "pax_lf", subPrev).v, Sp = getSeriesForSelection(selections[0], tSel, eSel, "asientos", subPrev).v;
+    let l = 0, a = 0, l1 = 0, a1 = 0, l0 = 0, a0 = 0;
+    seriePrincipal.forEach((v, i) => {
+      if (v == null) return;
+      l += L[i]; a += S[i];
+      if (seriePrev[i] != null) { l1 += L[i]; a1 += S[i]; l0 += Lp[i]; a0 += Sp[i]; }
+    });
+    valPeriodo = a ? l / a * 100 : null; valAct = a1 ? l1 / a1 * 100 : null; valPrev = a0 ? l0 / a0 * 100 : null;
+  }
 
   function variacion(act, prev) {
     if (act == null || prev == null) return '<em class="var nd">Sin dato del año anterior</em>';
@@ -1041,7 +1144,7 @@ function draw() {
     : "";
 
   document.getElementById("kpis").innerHTML = `
-    <div class="kpi"><small>${esPct ? "Ocupación promedio del periodo" : "Total acumulado del periodo"} (${nom1})</small>
+    <div class="kpi"><small>${k === "factor" ? "Factor de ocupación del periodo" : (esPct ? "Ocupación promedio del periodo" : "Total acumulado del periodo")} (${nom1})</small>
       <b>${fm(k, valPeriodo)}</b>
       <span>${rango} (${nTodo} meses)</span>
       <div class="cmp">${variacion(valAct, valPrev)} <span>vs. ${rangoPrev}: ${fm(k, valPrev)}${parcial}</span></div></div>
@@ -1054,6 +1157,87 @@ function draw() {
       : `<div class="kpi gris"><small>Promedio mensual (${nom1})</small><b>${fm(k, prom1)}</b><span>${s1.length} meses</span></div>`}
     <div class="kpi verde"><small>Máximo mensual (${nom1})</small><b>${fm(k, max1)}</b><span>Récord del periodo</span></div>
   `;
+  dibujarAire(selections[0], tSel, eSel, subFechas);
+}
+
+
+// ==== PANEL DE CONECTIVIDAD AÉREA ====
+function dibujarAire(dSel, tSel, eSel, subFechas) {
+  const card = document.getElementById("aireCard");
+  if (!AIRE) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const body = document.getElementById("aireBody"), sub = document.getElementById("aireSub");
+  const dests = destinosDeSeleccion(dSel, tSel, eSel);
+  const conAero = dests.filter(d => AIRE.serie[d]);
+  const nombre = nombreSeleccion(dSel, tSel, eSel);
+  const menos12 = f => { const [y, m] = f.split("-"); return (parseInt(y, 10) - 1) + "-" + m; };
+  const etqF = f => { const [y, m] = f.split("-"); return M[parseInt(m, 10) - 1] + " " + y; };
+
+  if (!conAero.length) {
+    sub.textContent = nombre;
+    body.innerHTML = '<p class="aire-nota" style="font-size:14px;">Este destino no tiene aeropuerto asignado en <b>' + ARCHIVO_AEROP +
+      '</b>. Para incluirlo, agregue una fila con el destino y el código IATA del aeropuerto que lo atiende.</p>';
+    return;
+  }
+  // Solo meses con dato AFAC (si el CSV turístico va más adelantado, esos meses se excluyen de la comparación)
+  const meses = subFechas.filter(f => f <= AIRE.hasta);
+  if (!meses.length) { sub.textContent = nombre; body.innerHTML = '<p class="aire-nota">No hay datos AFAC para el periodo seleccionado.</p>'; return; }
+  const prev = meses.map(menos12);
+  sub.textContent = nombre + " · " + etqF(meses[0]) + " – " + etqF(meses[meses.length - 1]) +
+    " vs. " + etqF(prev[0]) + " – " + etqF(prev[prev.length - 1]) +
+    (meses.length < subFechas.length ? " (AFAC disponible hasta " + etqF(AIRE.hasta) + ")" : "");
+
+  const sumSerie = (fs, k) => { let t = 0, n = 0; conAero.forEach(d => fs.forEach(f => { const o = AIRE.serie[d][f]; if (o) { t += o[k]; n++; } })); return n ? t : null; };
+  const R = fs => ({ pax: sumSerie(fs, "aire_total"), nac: sumSerie(fs, "aire_nac"), int: sumSerie(fs, "aire_int"),
+    vue: sumSerie(fs, "vuelos"), asi: sumSerie(fs, "asientos"), lf: sumSerie(fs, "pax_lf") });
+  const a = R(meses), p = R(prev);
+  const sumCat = (fs, t) => { const m = new Map(); conAero.forEach(d => { const x = (AIRE.cat[d] || {})[t] || {}; fs.forEach(f => (x[f] || []).forEach(([c, v]) => m.set(c, (m.get(c) || 0) + v))); }); return m; };
+
+  const fN = v => v == null ? "s/d" : Math.round(v).toLocaleString("es-MX");
+  const fP = v => v == null ? "s/d" : v.toFixed(1) + "%";
+  const varP = (x, y) => (x == null || !y) ? null : (x / y - 1) * 100;
+  const varTxt = v => v == null ? "s/d" : (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+  const cls = v => v == null || Math.abs(v) < 0.05 ? "" : (v > 0 ? "up" : "down");
+  const lfA = a.asi ? a.lf / a.asi * 100 : null, lfP = p.asi ? p.lf / p.asi * 100 : null;
+  const pctInt = a.pax ? a.int / a.pax * 100 : null, pctIntP = p.pax ? p.int / p.pax * 100 : null;
+  const pp = (x, y) => (x == null || y == null) ? "s/d" : ((x - y >= 0 ? "+" : "") + (x - y).toFixed(1) + " pp");
+
+  // Pasajeros aéreos por turista hospedado (meses con ambos datos)
+  let paxT = 0, turT = 0;
+  conAero.forEach(d => meses.forEach(f => { const i = db[d].pos[f]; if (i == null) return; const t = db[d].series.total[i], x = db[d].series.aire_total[i]; if (t != null && x != null) { paxT += x; turT += t; } }));
+
+  const ciudadesA = [...sumCat(meses, "C").values()].filter(v => v > 0).length, ciudadesP = [...sumCat(prev, "C").values()].filter(v => v > 0).length;
+  const aerolA = [...sumCat(meses, "A").values()].filter(v => v > 0).length;
+  const serv = sumCat(meses, "S"); const fle = serv.get("Fletamento") || 0;
+
+  const caja = (t, v, s2) => `<div><small>${t}</small><b>${v}</b><span>${s2}</span></div>`;
+  let html = '<div class="aire-res">' +
+    caja("Pasajeros aéreos llegados", fN(a.pax), `<b style="display:inline;font-size:13px;" class="${cls(varP(a.pax, p.pax))}">${varTxt(varP(a.pax, p.pax))}</b> vs. ${fN(p.pax)}`) +
+    caja("Vuelos llegados", fN(a.vue), `${varTxt(varP(a.vue, p.vue))} vs. ${fN(p.vue)}`) +
+    caja("Factor de ocupación", fP(lfA), `${pp(lfA, lfP)} vs. ${fP(lfP)}`) +
+    caja("Participación internacional", fP(pctInt), `${pp(pctInt, pctIntP)} vs. ${fP(pctIntP)}`) +
+    caja("Ciudades de origen", ciudadesA.toLocaleString("es-MX"), `${ciudadesA - ciudadesP >= 0 ? "+" : ""}${ciudadesA - ciudadesP} vs. ${ciudadesP} · ${aerolA} aerolíneas`) +
+    caja("Pasajeros aéreos por turista hospedado", turT ? (paxT / turT).toFixed(2) : "s/d", `Fletamento: ${a.pax ? fP(fle / a.pax * 100) : "s/d"} de los pasajeros`) +
+    '</div>';
+
+  function tabla(titulo, t, n) {
+    const mA = sumCat(meses, t), mP = sumCat(prev, t);
+    const tot = [...mA.values()].reduce((x, y) => x + y, 0);
+    const top = [...mA.entries()].filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, n);
+    if (!top.length) return `<table class="tab-top"><caption>${titulo}</caption><tr><td>Sin datos</td></tr></table>`;
+    return `<table class="tab-top"><caption>${titulo}</caption><tr><th>${t === "A" ? "Aerolínea" : "Origen"}</th><th>Pasajeros</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>` +
+      top.map(([c, v]) => { const pv = mP.get(c) || 0, vr = pv ? varP(v, pv) : null;
+        return `<tr><td>${c}</td><td>${fN(v)}</td><td>${fP(tot ? v / tot * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nuevo"}</td></tr>`; }).join("") +
+      "</table>";
+  }
+  html += '<div class="aire-grid">' + tabla("Top 10 países de origen", "P", 10) + tabla("Top 10 ciudades de origen", "C", 10) +
+    tabla("Top 10 entidades de origen (vuelos desde México)", "E", 10) + tabla("Top 10 aerolíneas", "A", 10) + "</div>";
+
+  const aeros = conAero.flatMap(d => AEROP[d] || []);
+  html += '<p class="aire-nota">Aeropuertos considerados: ' + (aeros.length ? aeros.join(", ") : "ver " + ARCHIVO_AEROP) +
+    (dests.length > 1 ? ` · ${conAero.length} de ${dests.length} destinos del filtro tienen aeropuerto asignado` : "") +
+    ". Llegadas = pasajeros de vuelos cuyo destino es el aeropuerto. Factor de ocupación calculado solo con vuelos que reportan asientos (disponible desde 2020). El indicador de pasajeros por turista hospedado puede ser mayor a 1 cuando el aeropuerto también atiende a destinos cercanos.</p>";
+  body.innerHTML = html;
 }
 
 document.getElementById("et").onchange = draw;

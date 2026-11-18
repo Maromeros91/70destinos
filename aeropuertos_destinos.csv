@@ -1,0 +1,46 @@
+Destino,IATA,Aeropuerto,Nota
+Acapulco,ACA,Acapulco,
+Aguascalientes,AGU,Aguascalientes,
+Bahías de Huatulco,HUX,Huatulco,
+Campeche,CPE,Campeche,
+Cancún,CUN,Cancún,
+Chihuahua,CUU,Chihuahua,
+Ciudad Juárez,CJS,Ciudad Juárez,
+Ciudad de México,MEX,AICM,
+Ciudad de México,NLU,AIFA (Santa Lucía),Ubicado en el Estado de México; se asigna a CDMX
+Coatzacoalcos,MTT,Minatitlán,Aeropuerto que sirve a Coatzacoalcos
+Colima,CLQ,Colima,
+Cozumel,CZM,Cozumel,
+Culiacán,CUL,Culiacán,
+Durango,DGO,Durango,
+Guadalajara,GDL,Guadalajara,
+Hermosillo,HMO,Hermosillo,
+Ixtapa - Zihuatanejo,ZIH,Zihuatanejo,
+La Paz,LAP,La Paz,
+León,BJX,Bajío (León/Silao),También sirve a Guanajuato y otras ciudades del Bajío
+Loreto,LTO,Loreto,
+Los Cabos,SJD,San José del Cabo,Se asigna al agregado Los Cabos
+Los Cabos,CSL,Los Cabos,
+Los Cabos,CSW,Cabo San Lucas (aeródromo),
+Los Mochis,LMM,Los Mochis,También sirve a El Fuerte
+Manzanillo,ZLO,Manzanillo,
+Mazatlán,MZT,Mazatlán,
+Mexicali,MXL,Mexicali,También sirve a San Felipe
+Monterrey,MTY,Monterrey,
+Morelia,MLM,Morelia,
+Mérida,MID,Mérida,
+Oaxaca,OAX,Oaxaca,
+Palenque,PQM,Palenque,
+Piedras Negras,PDS,Piedras Negras,
+Puebla,PBC,Puebla,
+Puerto Escondido,PXM,Puerto Escondido,
+Puerto Vallarta,PVR,Puerto Vallarta,También sirve a Nuevo Nayarit
+Querétaro,QRO,Querétaro,
+Riviera Maya,TQO,Tulum,La Riviera Maya también se abastece de Cancún (CUN)
+San Luis Potosí,SLP,San Luis Potosí,
+Tijuana,TIJ,Tijuana,También sirve a Rosarito y Tecate
+Toluca,TLC,Toluca,
+Tuxtla Gutiérrez,TGZ,Tuxtla Gutiérrez,También sirve a San Cristóbal de las Casas
+Veracruz-Boca del Río,VER,Veracruz,
+Villahermosa,VSA,Villahermosa,
+Zacatecas,ZCL,Zacatecas,
