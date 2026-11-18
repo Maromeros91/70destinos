@@ -673,6 +673,7 @@ const ARCHIVO_AIRE = "aereo_destinos.csv";
 const ARCHIVO_AEROP = "aeropuertos_destinos.csv";
 let AIRE = null;        // { serie: {destino: {fecha: {...}}}, cat: {destino: {tipo: {fecha: [[categoria, pax], ...]}}}, hasta }
 let AEROP = {};         // { destino: ["MEX (AICM)", ...] }
+let IATA_DEST = {};     // { "MEX": "Ciudad de México", ... }
 
 const bajar = (nombre, tipo) => fetch(nombre + "?v=" + Date.now(), { cache: "no-store" })
   .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return tipo === "buf" ? r.arrayBuffer() : r.arrayBuffer().then(decodificar); });
@@ -700,7 +701,7 @@ function cargarAire(txt) {
 
 function cargarAeropuertos(txt) {
   const filas = parseCSV(txt); const out = {};
-  filas.slice(1).forEach(r => { const d = (r[0] || "").trim(), c = (r[1] || "").trim(); if (d && c) (out[d] = out[d] || []).push(c + (r[2] ? " (" + r[2].trim() + ")" : "")); });
+  filas.slice(1).forEach(r => { const d = (r[0] || "").trim(), c = (r[1] || "").trim().toUpperCase(); if (d && c) { (out[d] = out[d] || []).push(c + (r[2] ? " (" + r[2].trim() + ")" : "")); IATA_DEST[c] = d; } });
   return out;
 }
 
@@ -1202,41 +1203,72 @@ function dibujarAire(dSel, tSel, eSel, subFechas) {
   const pctInt = a.pax ? a.int / a.pax * 100 : null, pctIntP = p.pax ? p.int / p.pax * 100 : null;
   const pp = (x, y) => (x == null || y == null) ? "s/d" : ((x - y >= 0 ? "+" : "") + (x - y).toFixed(1) + " pp");
 
-  // Pasajeros aéreos por turista hospedado (meses con ambos datos)
-  let paxT = 0, turT = 0;
-  conAero.forEach(d => meses.forEach(f => { const i = db[d].pos[f]; if (i == null) return; const t = db[d].series.total[i], x = db[d].series.aire_total[i]; if (t != null && x != null) { paxT += x; turT += t; } }));
+  // Rutas (ambos sentidos). Al agregar varios destinos, una ruta entre dos destinos del filtro se cuenta una sola vez.
+  const enFiltro = new Set(conAero);
+  function rutas(fs) {
+    const m = new Map();
+    conAero.forEach(d => ["RL", "RS"].forEach(t => {
+      const x = (AIRE.cat[d] || {})[t] || {};
+      fs.forEach(f => (x[f] || []).forEach(([c, v]) => {
+        const [iata, ciudad, pais] = c.split("|");
+        const d2 = IATA_DEST[iata];
+        if (d2 && enFiltro.has(d2) && d2 < d) return;   // ya contada desde el otro destino
+        const key = d + "|" + iata;
+        const o = m.get(key) || { d, iata, ciudad, pais, l: 0, s: 0, d2: d2 && enFiltro.has(d2) ? d2 : null };
+        if (t === "RL") o.l += v; else o.s += v;
+        m.set(key, o);
+      }));
+    }));
+    return m;
+  }
+  const rA = rutas(meses), rP = rutas(prev);
+  // Pasajeros salidos: todas las salidas desde los aeropuertos del destino (o del conjunto filtrado)
+  const totSal = fs => { const v = [...sumCat(fs, "RS").values()]; return v.length ? v.reduce((x, y) => x + y, 0) : null; };
+  const sal = totSal(meses), salP = totSal(prev);
 
-  const ciudadesA = [...sumCat(meses, "C").values()].filter(v => v > 0).length, ciudadesP = [...sumCat(prev, "C").values()].filter(v => v > 0).length;
-  const aerolA = [...sumCat(meses, "A").values()].filter(v => v > 0).length;
   const serv = sumCat(meses, "S"); const fle = serv.get("Fletamento") || 0;
+  const aerolA = [...sumCat(meses, "A").values()].filter(v => v > 0).length;
 
   const caja = (t, v, s2) => `<div><small>${t}</small><b>${v}</b><span>${s2}</span></div>`;
+  const cmpTxt = (x, y) => `<b style="display:inline;font-size:13px;" class="${cls(varP(x, y))}">${varTxt(varP(x, y))}</b> vs. ${fN(y)}`;
   let html = '<div class="aire-res">' +
-    caja("Pasajeros aéreos llegados", fN(a.pax), `<b style="display:inline;font-size:13px;" class="${cls(varP(a.pax, p.pax))}">${varTxt(varP(a.pax, p.pax))}</b> vs. ${fN(p.pax)}`) +
-    caja("Vuelos llegados", fN(a.vue), `${varTxt(varP(a.vue, p.vue))} vs. ${fN(p.vue)}`) +
+    caja("Pasajeros aéreos llegados", fN(a.pax), cmpTxt(a.pax, p.pax)) +
+    caja("Pasajeros aéreos salidos", fN(sal), cmpTxt(sal, salP)) +
+    caja("Vuelos llegados", fN(a.vue), cmpTxt(a.vue, p.vue)) +
     caja("Factor de ocupación", fP(lfA), `${pp(lfA, lfP)} vs. ${fP(lfP)}`) +
-    caja("Participación internacional", fP(pctInt), `${pp(pctInt, pctIntP)} vs. ${fP(pctIntP)}`) +
-    caja("Ciudades de origen", ciudadesA.toLocaleString("es-MX"), `${ciudadesA - ciudadesP >= 0 ? "+" : ""}${ciudadesA - ciudadesP} vs. ${ciudadesP} · ${aerolA} aerolíneas`) +
-    caja("Pasajeros aéreos por turista hospedado", turT ? (paxT / turT).toFixed(2) : "s/d", `Fletamento: ${a.pax ? fP(fle / a.pax * 100) : "s/d"} de los pasajeros`) +
+    caja("Participación internacional", fP(pctInt), `${pp(pctInt, pctIntP)} vs. ${fP(pctIntP)} · fletamento ${a.pax ? fP(fle / a.pax * 100) : "s/d"}`) +
     '</div>';
 
-  function tabla(titulo, t, n) {
+  function tabla(titulo, t, n, excluir) {
     const mA = sumCat(meses, t), mP = sumCat(prev, t);
+    if (excluir) { mA.delete(excluir); mP.delete(excluir); }
     const tot = [...mA.values()].reduce((x, y) => x + y, 0);
     const top = [...mA.entries()].filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, n);
     if (!top.length) return `<table class="tab-top"><caption>${titulo}</caption><tr><td>Sin datos</td></tr></table>`;
-    return `<table class="tab-top"><caption>${titulo}</caption><tr><th>${t === "A" ? "Aerolínea" : "Origen"}</th><th>Pasajeros</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>` +
+    return `<table class="tab-top"><caption>${titulo}</caption><tr><th>${t === "A" ? "Aerolínea" : "País"}</th><th>Pasajeros</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>` +
       top.map(([c, v]) => { const pv = mP.get(c) || 0, vr = pv ? varP(v, pv) : null;
         return `<tr><td>${c}</td><td>${fN(v)}</td><td>${fP(tot ? v / tot * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nuevo"}</td></tr>`; }).join("") +
       "</table>";
   }
-  html += '<div class="aire-grid">' + tabla("Top 10 países de origen", "P", 10) + tabla("Top 10 ciudades de origen", "C", 10) +
-    tabla("Top 10 entidades de origen (vuelos desde México)", "E", 10) + tabla("Top 10 aerolíneas", "A", 10) + "</div>";
+  function tablaRutas(n) {
+    const lista = [...rA.values()].map(o => ({ ...o, t: o.l + o.s })).filter(o => o.t > 0).sort((x, y) => y.t - x.t).slice(0, n);
+    if (!lista.length) return '<table class="tab-top"><caption>Top 10 rutas</caption><tr><td>Sin datos</td></tr></table>';
+    const totR = [...rA.values()].reduce((x, o) => x + o.l + o.s, 0);
+    const varios = conAero.length > 1;
+    return '<table class="tab-top"><caption>Top 10 rutas (llegadas + salidas)</caption><tr><th>Ruta</th><th>Llegadas</th><th>Salidas</th><th>Total</th><th>Part.</th><th>Año ant.</th><th>Var.</th></tr>' +
+      lista.map(o => {
+        const q = rP.get(o.d + "|" + o.iata), pv = q ? q.l + q.s : 0, vr = pv ? varP(o.t, pv) : null;
+        const contra = (o.d2 || o.ciudad) + " (" + o.iata + (o.pais !== "México" ? ", " + o.pais : "") + ")";
+        return `<tr><td>${varios ? o.d + " ↔ " : "↔ "}${contra}</td><td>${fN(o.l)}</td><td>${fN(o.s)}</td><td>${fN(o.t)}</td><td>${fP(totR ? o.t / totR * 100 : null)}</td><td>${pv ? fN(pv) : "—"}</td><td class="${cls(vr)}">${pv ? varTxt(vr) : "nueva"}</td></tr>`;
+      }).join("") + "</table>";
+  }
+  html += '<div class="aire-grid">' + tabla("Top 10 países de origen (vuelos internacionales)", "P", 10, "México") + tabla("Top 10 aerolíneas", "A", 10) + "</div>" +
+    '<div style="margin-top:20px;">' + tablaRutas(10) + "</div>";
 
   const aeros = conAero.flatMap(d => AEROP[d] || []);
   html += '<p class="aire-nota">Aeropuertos considerados: ' + (aeros.length ? aeros.join(", ") : "ver " + ARCHIVO_AEROP) +
     (dests.length > 1 ? ` · ${conAero.length} de ${dests.length} destinos del filtro tienen aeropuerto asignado` : "") +
-    ". Llegadas = pasajeros de vuelos cuyo destino es el aeropuerto. Factor de ocupación calculado solo con vuelos que reportan asientos (disponible desde 2020). El indicador de pasajeros por turista hospedado puede ser mayor a 1 cuando el aeropuerto también atiende a destinos cercanos.</p>";
+    ". Llegadas = pasajeros de vuelos que aterrizan en el aeropuerto; salidas = pasajeros de vuelos que despegan de él. Factor de ocupación calculado solo con vuelos que reportan asientos (disponible desde 2020).</p>";
   body.innerHTML = html;
 }
 

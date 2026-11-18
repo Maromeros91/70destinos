@@ -57,7 +57,10 @@ code { background:#f1eee8; padding:1px 5px; border-radius:4px; }
 // ====================================================================
 // Agregador AFAC -> aereo_destinos.csv
 // Misma lógica para preparar_aereo.html (navegador) y para Node.
-// Cuenta LLEGADAS: vuelos cuyo aeropuerto DESTINO pertenece al destino turístico.
+// Cuenta LLEGADAS (vuelos cuyo aeropuerto DESTINO pertenece al destino turístico)
+// y, para las rutas, también SALIDAS (vuelos cuyo aeropuerto ORIGEN pertenece al destino).
+// Tipos: K = llegadas por cobertura, P = país de origen, A = aerolínea, S = servicio,
+//        RL = ruta de llegada (desde IATA|ciudad|país), RS = ruta de salida (hacia IATA|ciudad|país).
 // ====================================================================
 const AFAC = (() => {
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -88,16 +91,19 @@ const AFAC = (() => {
       const f = (...nombres) => { for (const n of nombres) { const i = H.indexOf(n); if (i >= 0) return i; } return -1; };
       cols = {
         anio: f("ano", "anio", "a?o"), mes: f("mes"), cob: f("cobertura"), emp: f("nombre empresa"),
-        dest: f("destino"), asi: f("asientos"), vue: f("vuelos"), pax: f("pasajeros"),
+        dest: f("destino"), orig: f("origen"), ciudadDest: f("destino_corregido", "destino corregido"), paisDestino: f("pais_destino", "pais destino"), asi: f("asientos"), vue: f("vuelos"), pax: f("pasajeros"),
         pais: f("pais_origen", "pais origen"), ciudad: f("origen_corregido", "origen corregido"),
         ent: f("entidad_origen", "entidad origen"), serv: f("servicio"), paisDest: f("pais_destino", "pais destino")
       };
       if (cols.anio < 0) cols.anio = 0;
-      const falt = Object.entries(cols).filter(([k, v]) => v < 0 && k !== "paisDest").map(([k]) => k);
+      const falt = Object.entries(cols).filter(([k, v]) => v < 0 && k !== "paisDest" && k !== "ent").map(([k]) => k);
       if (falt.length) throw new Error("Faltan columnas en el archivo AFAC: " + falt.join(", "));
     }
 
     function sumC(key, pax, vue) { const a = C.get(key); if (a) { a[0] += pax; a[1] += vue; } else C.set(key, [pax, vue]); }
+
+    // Etiqueta de ciudad (la AFAC llama "México" a la Ciudad de México)
+    const ciudad = (c, p) => { c = String(c || "").trim() || "N/D"; p = String(p || "").trim() || "N/D"; return (norm(c) === "mexico" && norm(p) === "mexico") ? "Ciudad de México" : c; };
 
     function linea(line) {
       if (!line.trim()) return;
@@ -105,18 +111,26 @@ const AFAC = (() => {
       if (!cols) { cabecera(r); return; }
       filas++;
       const iata = String(r[cols.dest] || "").trim().toUpperCase();
-      const destino = mapa[iata];
+      const iataO = String(r[cols.orig] || "").trim().toUpperCase();
+      const destino = mapa[iata], destinoO = mapa[iataO];
       const pax = num(r[cols.pax]) || 0;
-      if (!destino) {
-        if (cols.paisDest >= 0 && norm(r[cols.paisDest]) === "mexico") sinMapa.set(iata, (sinMapa.get(iata) || 0) + pax);
-        return;
-      }
+      if (!destino && cols.paisDest >= 0 && norm(r[cols.paisDest]) === "mexico") sinMapa.set(iata, (sinMapa.get(iata) || 0) + pax);
+      if (!destino && !destinoO) return;
       const anio = parseInt(r[cols.anio], 10), mes = MESES[norm(r[cols.mes])];
       if (!anio || !mes) return;
       usadas++;
       const fecha = anio + "-" + String(mes).padStart(2, "0");
       if (fecha > maxF) maxF = fecha;
       const vue = num(r[cols.vue]) || 0;
+      const paisO = String(r[cols.pais] || "").trim() || "N/D";
+      const paisD = String(r[cols.paisDestino] || "").trim() || "N/D";
+
+      // SALIDAS desde el destino (ruta destino -> contraparte)
+      if (destinoO && destinoO !== destino)
+        sumC(destinoO + "|" + fecha + "|RS|" + iata + "|" + ciudad(r[cols.ciudadDest], paisD) + "|" + paisD, pax, vue);
+      if (!destino) return;
+
+      // LLEGADAS al destino
       const asi = num(r[cols.asi]);
       const cob = String(r[cols.cob]).trim().toUpperCase() === "I" ? "I" : "N";
       const kk = destino + "|" + fecha + "|" + cob;
@@ -125,12 +139,11 @@ const AFAC = (() => {
       if (asi != null && asi > 0) { a[2] += asi * vue; a[3] += pax; }
       K.set(kk, a);
       const base = destino + "|" + fecha + "|";
-      const pais = String(r[cols.pais] || "").trim() || "N/D";
-      sumC(base + "P|" + pais, pax, vue);
+      sumC(base + "P|" + paisO, pax, vue);
       sumC(base + "A|" + (String(r[cols.emp] || "").trim() || "N/D"), pax, vue);
-      sumC(base + "C|" + (String(r[cols.ciudad] || "").trim() || "N/D") + " (" + pais + ")", pax, vue);
-      if (norm(pais) === "mexico") sumC(base + "E|" + (String(r[cols.ent] || "").trim() || "N/D"), pax, vue);
       sumC(base + "S|" + (String(r[cols.serv] || "").trim() || "N/D"), pax, vue);
+      if (destinoO !== destino)
+        sumC(base + "RL|" + iataO + "|" + ciudad(r[cols.ciudad], paisO) + "|" + paisO, pax, vue);
     }
 
     const q = s => /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -219,7 +232,7 @@ $("fAfac").onchange = async e => {
     const MES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     $("estado").innerHTML = '<span class="ok">✓ Listo</span> en ' + ((performance.now() - t0) / 1000).toFixed(1) + " s. " +
       RESULTADO.filas.toLocaleString("es-MX") + " registros leídos, " + RESULTADO.usadas.toLocaleString("es-MX") +
-      " corresponden a llegadas a aeropuertos asignados. Último mes: <b>" + MES[parseInt(m, 10) - 1] + " " + a + "</b>. Archivo resultante: " +
+      " corresponden a llegadas o salidas de aeropuertos asignados. Último mes: <b>" + MES[parseInt(m, 10) - 1] + " " + a + "</b>. Archivo resultante: " +
       (RESULTADO.csv.length / 1048576).toFixed(1) + " MB.";
     $("bajar").disabled = false;
     if (RESULTADO.sinMapa.length) {
